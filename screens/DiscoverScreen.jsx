@@ -17,7 +17,11 @@ const AVAILABLE_CATEGORIES = [
 ];
 
 export default function DiscoverScreen({ navigation }) {
-  const { preferences, savePreferences, addSite, discoverCache, updateDiscoverCache } = useContext(VaultContext);
+  // NEW: Destructured apiKeys AND markKeyExhausted from context
+  const { 
+    preferences, savePreferences, addSite, 
+    discoverCache, updateDiscoverCache, apiKeys, markKeyExhausted 
+  } = useContext(VaultContext);
   
   const [activeTab, setActiveTab] = useState('All');
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -49,12 +53,13 @@ export default function DiscoverScreen({ navigation }) {
     }
     
     setIsFetching(true);
-    const newCacheData = await fetchDiscoverSites(catsToFetch, existingSitesToAvoid);
+    // NEW: Pass both apiKeys and markKeyExhausted to the fetch function!
+    const newCacheData = await fetchDiscoverSites(catsToFetch, existingSitesToAvoid, apiKeys, markKeyExhausted);
     
     if (newCacheData) {
       updateDiscoverCache(newCacheData);
     } else {
-      showAlert("Fetch Failed", "Failed to fetch suggestions from AI. Please check your connection and try again.", "error");
+      showAlert("Fetch Failed", "Failed to fetch suggestions from AI. Try adding a custom API key in Settings.", "error");
     }
     setIsFetching(false);
   };
@@ -116,7 +121,6 @@ export default function DiscoverScreen({ navigation }) {
   const displayData = getDisplayData();
 
   return (
-    // FIXED: Using slate-900 instead of darkBg
     <View className="flex-1 bg-slate-900">
       <LinearGradient colors={['rgba(217, 70, 239, 0.15)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 140, zIndex: 10 }} pointerEvents="none" />
 
@@ -145,7 +149,6 @@ export default function DiscoverScreen({ navigation }) {
               {tabs.map((tab) => {
                 const isActive = activeTab === tab;
                 return (
-                  // FIXED: Replaced accentPink with fuchsia-500
                   <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} className={`flex-row items-center px-5 py-2.5 rounded-2xl border mr-3 ${isActive ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-slate-700 bg-slate-800/40'}`}>
                     {isActive && <View className="w-1.5 h-3.5 bg-fuchsia-500 rounded-full mr-2" />}
                     <Text className={`font-semibold ${isActive ? 'text-white' : 'text-slate-400'}`}>{tab}</Text>
@@ -157,7 +160,6 @@ export default function DiscoverScreen({ navigation }) {
           </View>
         ) : (
           <View className="px-4 mb-6">
-             {/* FIXED: Replaced accentPink with fuchsia-500 */}
              <TouchableOpacity onPress={openEditModal} className="bg-fuchsia-500/20 border border-fuchsia-500 p-4 rounded-xl items-center">
                 <Text className="text-fuchsia-500 font-bold text-center">Tap the options icon above to select your interests!</Text>
              </TouchableOpacity>
@@ -203,7 +205,6 @@ export default function DiscoverScreen({ navigation }) {
                 {AVAILABLE_CATEGORIES.map(cat => {
                   const isSelected = tempPrefs.includes(cat);
                   return (
-                    // FIXED: Replaced accentPink with fuchsia-500
                     <TouchableOpacity key={cat} onPress={() => toggleTempPref(cat)} className={`px-4 py-3 rounded-xl m-1 border ${isSelected ? 'bg-fuchsia-500 border-fuchsia-500' : 'bg-slate-800/50 border-slate-700'}`}>
                       <Text className={isSelected ? 'text-white font-bold' : 'text-slate-400'}>{cat}</Text>
                     </TouchableOpacity>

@@ -1,23 +1,24 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEYS = [
-  'AIzaSyC9Uo6N0-mO_oM9QZXD28hHk0ZB99NZqMY',
-  'AIzaSyCtNsBfYETP3yxnUtTHBzKqKZq9HO_yDs8',
-  'AIzaSyA4kYuUQCsJprfRXYkwBsh8ZOYngI9vZNo'
+  process.env.EXPO_PUBLIC_GEMINI_API_KEY,
 ];
 
-const callGeminiWithFallback = async (prompt, isJson = true) => {
-  for (let i = 0; i < API_KEYS.length; i++) {
-    const currentKey = API_KEYS[i];
-    
-    // Skip if the key is undefined or empty
-    if (!currentKey) continue; 
+// Added onLimitReached parameter
+const callGeminiWithFallback = async (prompt, isJson = true, userApiKeys = [], onLimitReached = null) => {
+  const allKeys = [...API_KEYS, ...userApiKeys].filter(Boolean);
 
+  if (allKeys.length === 0) {
+    throw new Error("No API keys available.");
+  }
+
+  for (let i = 0; i < allKeys.length; i++) {
+    const currentKey = allKeys[i];
     const genAI = new GoogleGenerativeAI(currentKey);
     
     try {
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash", // Using your flagship flash model
+        model: "gemini-2.5-flash", 
         generationConfig: isJson ? { responseMimeType: "application/json" } : {}
       });
 
@@ -29,25 +30,28 @@ const callGeminiWithFallback = async (prompt, isJson = true) => {
     } catch (error) {
       const isQuotaError = error.message?.includes("429") || error.status === 429 || error.message?.includes("quota");
       
-      // If it's a quota error and we have another key left, try the next one
-      if (isQuotaError && i < API_KEYS.length - 1) {
-        console.log(`API Key ${i + 1} limit reached. Switching to API Key ${i + 2}...`);
-        continue; 
+      if (isQuotaError) {
+        // NEW: Tell the app this specific key is exhausted!
+        if (onLimitReached) onLimitReached(currentKey);
+        
+        if (i < allKeys.length - 1) {
+          console.log(`API Key ${i + 1} limit reached. Switching to next key...`);
+          continue; 
+        }
       }
 
-      // If it's the last key or not a quota error, log and throw
       console.error(`Gemini Error (Key ${i + 1}):`, error);
-      if (i === API_KEYS.length - 1) {
+      if (i === allKeys.length - 1) {
         throw new Error("All AI quotas are currently full or request failed.");
       }
     }
   }
 };
 
-export const fetchDiscoverSites = async (categories, existingSites = []) => {
+// Added onLimitReached parameter here too
+export const fetchDiscoverSites = async (categories, existingSites = [], userApiKeys = [], onLimitReached = null) => {
   if (!categories || categories.length === 0) return null;
 
-  // The prompt requesting the exact 60-site batch structure
   const prompt = `
     You are an expert curator of websites, tools, and resources. 
     I need website suggestions for the following categories: ${categories.join(', ')}.
@@ -71,8 +75,8 @@ export const fetchDiscoverSites = async (categories, existingSites = []) => {
   `;
 
   try {
-    // Call your new robust fallback method
-    const data = await callGeminiWithFallback(prompt, true);
+    // Pass everything down
+    const data = await callGeminiWithFallback(prompt, true, userApiKeys, onLimitReached);
     return data;
   } catch (error) {
     console.error("Discover Fetch Error:", error);
