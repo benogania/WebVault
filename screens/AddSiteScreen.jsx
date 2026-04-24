@@ -11,10 +11,8 @@ export default function AddSiteScreen({ route, navigation }) {
   const [name, setName] = useState(siteToEdit ? siteToEdit.name : (prefill ? prefill.name : ''));
   const [iconUrl, setIconUrl] = useState(siteToEdit ? siteToEdit.iconUrl : null);
 
-  // THIS IS THE MISSING LINE:
   const { addSite, editSite } = useContext(VaultContext);
 
-  // Auto-fetch icon and guess name when URL changes
   useEffect(() => {
     if (url.length > 4 && url.includes('.')) {
       let validUrl = url;
@@ -24,10 +22,8 @@ export default function AddSiteScreen({ route, navigation }) {
       
       try {
         const domain = new URL(validUrl).hostname;
-        // Fetch high-res favicon using Google's service
         setIconUrl(`https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
         
-        // Auto-fill name if it's currently empty
         if (!name) {
           const parts = domain.split('.');
           if (parts.length > 1) {
@@ -36,7 +32,6 @@ export default function AddSiteScreen({ route, navigation }) {
           }
         }
       } catch (e) {
-        // Invalid URL, wait for user to type more
         if (!siteToEdit) setIconUrl(null);
       }
     } else {
@@ -49,10 +44,8 @@ export default function AddSiteScreen({ route, navigation }) {
       let finalUrl = url.startsWith('http') ? url : `https://${url}`;
       
       if (siteToEdit) {
-        // If we are editing, call editSite
         editSite(siteToEdit.id, { name, url: finalUrl, iconUrl });
       } else {
-        // If we are adding new, call addSite
         addSite(name, finalUrl, iconUrl);
       }
       
@@ -63,11 +56,12 @@ export default function AddSiteScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-darkBg justify-center px-4"
+      // FIXED: Using slate-900 instead of darkBg
+      className="flex-1 bg-slate-900 justify-center px-4"
     >
-      <View className="bg-cardBg border border-slate-700/60 rounded-3xl p-6 shadow-2xl">
+      {/* FIXED: Using slate-800 instead of cardBg */}
+      <View className="bg-slate-800 border border-slate-700/60 rounded-3xl p-6 shadow-2xl">
         
-        {/* Header */}
         <View className="flex-row justify-between items-center mb-8">
           <Text className="text-white text-2xl font-bold" style={{ letterSpacing: 1 }}>
             {siteToEdit ? 'Edit Site' : 'Add New Site'}
@@ -77,7 +71,6 @@ export default function AddSiteScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* URL Input */}
         <View className="mb-6">
           <Text className="text-slate-400 text-xs font-bold mb-2 uppercase" style={{ letterSpacing: 2 }}>
             Site URL
@@ -96,7 +89,6 @@ export default function AddSiteScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Name Input */}
         <View className="mb-8">
           <Text className="text-slate-400 text-xs font-bold mb-2 uppercase" style={{ letterSpacing: 2 }}>
             Site Name
@@ -113,7 +105,6 @@ export default function AddSiteScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Preview Box */}
         <View className="flex-row items-center border border-slate-700 rounded-xl bg-slate-800/30 p-4 mb-8">
           <View className="w-12 h-12 rounded-xl bg-slate-800 justify-center items-center border border-slate-700 overflow-hidden mr-4">
             {iconUrl ? (
@@ -132,10 +123,10 @@ export default function AddSiteScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Actions */}
         <TouchableOpacity 
           onPress={handleSave}
-          className="bg-accentPink rounded-xl py-4 items-center mb-4"
+          // FIXED: Using fuchsia-500 instead of accentPink
+          className="bg-fuchsia-500 rounded-xl py-4 items-center mb-4"
           style={{ shadowColor: '#d946ef', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}
         >
           <Text className="text-white font-bold text-lg" style={{ letterSpacing: 1 }}>

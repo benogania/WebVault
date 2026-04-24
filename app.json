@@ -17,7 +17,6 @@
       "backgroundColor": "#0f172a",
       "translucent": true
     },
-
     "ios": {
       "supportsTablet": true
     },
@@ -28,9 +27,11 @@
       },
       "edgeToEdgeEnabled": true
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

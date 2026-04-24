@@ -3,7 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import PinnedScreen from '../screens/PinnedScreen';
+import AllSitesScreen from '../screens/AllSitesScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,15 +26,21 @@ export default function TabNavigator() {
           let iconName;
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Discover') iconName = focused ? 'sparkles' : 'sparkles-outline';
-          else if (route.name === 'Pinned') iconName = focused ? 'pin' : 'pin-outline';
+          // Changed route name and icon to 'grid'
+          else if (route.name === 'AllSites') iconName = focused ? 'grid' : 'grid-outline'; 
           else if (route.name === 'Settings') iconName = focused ? 'settings' : 'settings-outline';
           return <Ionicons name={iconName} size={24} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Discover" component={SettingsScreen} />
-      <Tab.Screen name="Pinned" component={PinnedScreen} />
+      <Tab.Screen name="Discover" component={DiscoverScreen} />
+      {/* Updated the screen reference and added a custom label */}
+      <Tab.Screen 
+        name="AllSites" 
+        component={AllSitesScreen} 
+        options={{ tabBarLabel: 'All Sites' }} 
+      />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

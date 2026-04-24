@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Platform, StatusBar } from 'react-native'; // Use standard react-native StatusBar
+import React, { useEffect, useRef } from 'react';
+import { Platform, StatusBar, AppState } from 'react-native'; // NEW: Added AppState
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -7,35 +7,72 @@ import * as NavigationBar from 'expo-navigation-bar';
 import TabNavigator from './navigation/TabNavigator';
 import AddSiteScreen from './screens/AddSiteScreen';
 import { VaultProvider } from './context/VaultContext';
+import DiscoverScreen from './screens/DiscoverScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  
-  useEffect(() => {
-    const setupSystemUI = async () => {
-      if (Platform.OS === 'android') {
-        // 1. Hide the bottom navigation bar
-        await NavigationBar.setVisibilityAsync("hidden");
-        await NavigationBar.setBehaviorAsync("overlay-swipe");
+  // NEW: Keep track of whether the app is in the foreground or background
+  const appState = useRef(AppState.currentState);
 
-        // 2. Imperative Status Bar calls (No component needed)
-        // This forces icons to white and ensures the background is transparent
+  useEffect(() => {
+    // We moved the UI logic into a reusable function
+    const enforceImmersiveMode = async () => {
+      if (Platform.OS === 'android') {
+        // Hide the bottom navigation bar
+        await NavigationBar.setVisibilityAsync("hidden");
+
+        // Force icons to white and ensure background is transparent
         StatusBar.setBarStyle('light-content', true);
         StatusBar.setBackgroundColor('transparent');
         StatusBar.setTranslucent(true);
       }
     };
 
-    setupSystemUI();
+    // 1. Run it immediately when the app first opens
+    enforceImmersiveMode();
+
+    // 2. Setup the AppState listener to watch for the app returning from the background
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // The user just came back to the app from the browser or another app!
+        // Re-enforce the immersive mode to hide the buttons again.
+        enforceImmersiveMode();
+      }
+      appState.current = nextAppState;
+    });
+
+    // Cleanup the listener if the app is destroyed
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (
     <VaultProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false, presentation: 'modal' }}>
+        <Stack.Navigator 
+          screenOptions={{ 
+            headerShown: false,
+            animation: 'slide_from_right', 
+            contentStyle: { backgroundColor: '#0f172a' } 
+          }}
+        >
           <Stack.Screen name="MainTabs" component={TabNavigator} />
-          <Stack.Screen name="AddSite" component={AddSiteScreen} />
+          
+          <Stack.Screen 
+            name="AddSite" 
+            component={AddSiteScreen} 
+            options={{
+              animation: 'slide_from_bottom',
+              presentation: 'modal', 
+            }}
+          />
+          
+          <Stack.Screen name="Discover" component={DiscoverScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </VaultProvider>

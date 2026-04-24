@@ -1,17 +1,18 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Entypo, AntDesign } from '@expo/vector-icons'; // Import Entypo
 
 export default function VaultCard({ id, name, icon, iconUrl, color, isPinned, onPress, onLongPress }) {
   return (
     <TouchableOpacity 
       onPress={() => onPress(id)}
       onLongPress={() => onLongPress(id)}
-      className="bg-cardBg rounded-2xl w-[31%] mx-[1%] mb-2 h-28 justify-center items-center relative border border-slate-700/50"
+      className="bg-cardBg rounded-2xl w-[31%] mx-[1%] mb-4 h-28 justify-center items-center relative border border-slate-700/50"
     >
       {isPinned && (
         <View className="absolute top-2 right-2 z-10">
-          <Ionicons name="pin" size={16} color="#d946ef" />
+          {/* Updated to Entypo 'pin' */}
+          <AntDesign name="pushpin" size={14} color="#d946ef" />
         </View>
       )}
       
