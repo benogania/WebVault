@@ -20,9 +20,10 @@ export const VaultProvider = ({ children }) => {
   const [preferences, setPreferences] = useState([]);
   const [discoverCache, setDiscoverCache] = useState(null);
   const [apiKeys, setApiKeys] = useState([]);
-  
-  // NEW: State to track which keys hit the rate limit
   const [exhaustedKeys, setExhaustedKeys] = useState([]);
+  
+  // NEW: State to manage folders
+  const [folders, setFolders] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -47,9 +48,12 @@ export const VaultProvider = ({ children }) => {
       const storedKeys = await AsyncStorage.getItem('@api_keys');
       if (storedKeys) setApiKeys(JSON.parse(storedKeys));
 
-      // Load exhausted keys
       const storedExhausted = await AsyncStorage.getItem('@exhausted_keys');
       if (storedExhausted) setExhaustedKeys(JSON.parse(storedExhausted));
+
+      // NEW: Load folders
+      const storedFolders = await AsyncStorage.getItem('@vault_folders');
+      if (storedFolders) setFolders(JSON.parse(storedFolders));
 
     } catch (e) {
       console.error("Failed to load data", e);
@@ -70,14 +74,11 @@ export const VaultProvider = ({ children }) => {
     }
   };
 
-  // --- API KEY MANAGEMENT ---
   const addApiKey = async (key) => {
     if (!key || apiKeys.includes(key)) return;
     const newKeys = [...apiKeys, key];
     setApiKeys(newKeys);
     await AsyncStorage.setItem('@api_keys', JSON.stringify(newKeys));
-    
-    // If they re-add a key, clear it from exhausted list just in case
     if (exhaustedKeys.includes(key)) {
       const newExhausted = exhaustedKeys.filter(k => k !== key);
       setExhaustedKeys(newExhausted);
@@ -89,14 +90,11 @@ export const VaultProvider = ({ children }) => {
     const newKeys = apiKeys.filter(key => key !== keyToRemove);
     setApiKeys(newKeys);
     await AsyncStorage.setItem('@api_keys', JSON.stringify(newKeys));
-
-    // Cleanup exhausted list too
     const newExhausted = exhaustedKeys.filter(key => key !== keyToRemove);
     setExhaustedKeys(newExhausted);
     await AsyncStorage.setItem('@exhausted_keys', JSON.stringify(newExhausted));
   };
 
-  // NEW: Function to mark a key as exhausted
   const markKeyExhausted = async (key) => {
     if (!exhaustedKeys.includes(key)) {
       const newExhausted = [...exhaustedKeys, key];
@@ -106,7 +104,8 @@ export const VaultProvider = ({ children }) => {
   };
 
   const addSite = async (name, url, iconUrl = null) => {
-    const newSite = { id: Date.now().toString(), name, url, icon: 'planet', iconUrl, color: '#a855f7', isPinned: false };
+    // Note: new sites start with folderId: null
+    const newSite = { id: Date.now().toString(), name, url, icon: 'planet', iconUrl, color: '#a855f7', isPinned: false, folderId: null };
     const updatedSites = [...vaultSites, newSite];
     setVaultSites(updatedSites);
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
@@ -133,17 +132,44 @@ export const VaultProvider = ({ children }) => {
   const importSites = async (importedSites) => {
     const combined = [...vaultSites, ...importedSites];
     const uniqueSites = Array.from(new Map(combined.map(item => [item.url, item])).values());
-    const finalizedSites = uniqueSites.map((site, index) => ({ ...site, id: site.id || (Date.now() + index).toString() }));
+    const finalizedSites = uniqueSites.map((site, index) => ({ ...site, id: site.id || (Date.now() + index).toString(), folderId: site.folderId || null }));
     setVaultSites(finalizedSites);
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(finalizedSites));
+  };
+
+  // --- FOLDER MANAGEMENT (NEW) ---
+  const createFolder = async (name) => {
+    const newFolder = { id: 'folder_' + Date.now(), name };
+    const updatedFolders = [...folders, newFolder];
+    setFolders(updatedFolders);
+    await AsyncStorage.setItem('@vault_folders', JSON.stringify(updatedFolders));
+    return newFolder.id;
+  };
+
+  const deleteFolder = async (folderId) => {
+    // Remove the folder
+    const updatedFolders = folders.filter(f => f.id !== folderId);
+    setFolders(updatedFolders);
+    await AsyncStorage.setItem('@vault_folders', JSON.stringify(updatedFolders));
+    
+    // Move all sites in that folder back to the main screen
+    const updatedSites = vaultSites.map(site => site.folderId === folderId ? { ...site, folderId: null } : site);
+    setVaultSites(updatedSites);
+    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+  };
+
+  const moveSiteToFolder = async (siteId, folderId) => {
+    const updatedSites = vaultSites.map(site => site.id === siteId ? { ...site, folderId } : site);
+    setVaultSites(updatedSites);
+    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
   };
 
   return (
     <VaultContext.Provider value={{ 
       vaultSites, addSite, togglePin, deleteSite, editSite, importSites,
       preferences, savePreferences, discoverCache, updateDiscoverCache,
-      apiKeys, addApiKey, removeApiKey, 
-      exhaustedKeys, markKeyExhausted // <-- Exported to use in Discover & Settings
+      apiKeys, addApiKey, removeApiKey, exhaustedKeys, markKeyExhausted,
+      folders, createFolder, deleteFolder, moveSiteToFolder // <-- Export folder functions
     }}>
       {children}
     </VaultContext.Provider>
