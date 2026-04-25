@@ -11,14 +11,13 @@ import FloatingButton from '../components/FloatingButton';
 import SiteActionModal from '../components/SiteActionModal';
 import { VaultContext } from '../context/VaultContext';
 
-const FolderCard = ({ folder, sites, onPress }) => {
+// Added onLongPress prop to the FolderCard
+const FolderCard = ({ folder, sites, onPress, onLongPress }) => {
   const folderSites = sites.filter(s => s.folderId === folder.id);
   const previewSites = folderSites.slice(0, 4); 
 
   return (
-    // FIXED: Using exactly 31% width to match VaultCard
-    <TouchableOpacity onPress={onPress} className="w-[31%] items-center mb-4">
-      {/* Restored rounded-xl shape */}
+    <TouchableOpacity onPress={onPress} onLongPress={onLongPress} activeOpacity={0.8} className="w-[31%] items-center mb-4">
       <View className="w-full h-28 bg-slate-800 rounded-xl border border-slate-700/60 p-3 justify-between items-center shadow-lg">
         
         <View className="flex-1 w-full justify-center items-center pt-1">
@@ -50,11 +49,15 @@ const FolderCard = ({ folder, sites, onPress }) => {
 
 export default function HomeScreen({ navigation }) {
   const [selectedSite, setSelectedSite] = useState(null);
+  
+  // NEW: State for the Folder Options modal
+  const [selectedFolderActions, setSelectedFolderActions] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [openedFolder, setOpenedFolder] = useState(null);
   
-  const { vaultSites = [], folders = [], deleteFolder, togglePin, deleteSite } = useContext(VaultContext);
+  // Destructured the new extractFolder function
+  const { vaultSites = [], folders = [], deleteFolder, extractFolder, togglePin, deleteSite } = useContext(VaultContext);
 
   const mainSites = vaultSites.filter(site => !site.folderId);
 
@@ -78,18 +81,6 @@ export default function HomeScreen({ navigation }) {
 
   const handleEdit = (site) => navigation.navigate('AddSite', { siteToEdit: site });
 
-  const confirmDeleteFolder = () => {
-    Alert.alert("Delete Folder", "Are you sure? Sites inside will be moved back to the main dashboard.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => {
-          deleteFolder(openedFolder.id);
-          setOpenedFolder(null);
-          if (Platform.OS === 'android') ToastAndroid.show('Folder deleted', ToastAndroid.SHORT);
-        }
-      }
-    ]);
-  };
-
   return (
     <View className="flex-1 bg-slate-900">
       <LinearGradient colors={['rgba(217, 70, 239, 0.15)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 140, zIndex: 10 }} pointerEvents="none" />
@@ -98,11 +89,9 @@ export default function HomeScreen({ navigation }) {
         <Header />
         <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
 
-        {/* --- Pinned Section --- */}
         {filteredPinned.length > 0 && (
           <>
             <SectionHeader title="Pinned" actionText="VIEW ALL" onActionPress={() => navigation.navigate('AllSites')} />
-            {/* FIXED MATH: Using exactly columnGap: 3.5% */}
             <View className="flex-row flex-wrap px-4 mb-2 justify-start" style={{ columnGap: '3.5%' }}>
               {filteredPinned.map(item => (
                 <VaultCard 
@@ -117,14 +106,18 @@ export default function HomeScreen({ navigation }) {
           </>
         )}
 
-        {/* --- FOLDERS & VAULT SECTION --- */}
         <SectionHeader title={searchQuery ? "Search Results" : "Your Vault"} />
         
-        {/* FIXED MATH: Using exactly columnGap: 3.5% */}
         <View className="flex-row flex-wrap px-4 mb-2 justify-start" style={{ columnGap: '3.5%' }}>
           
           {filteredFolders.map(folder => (
-            <FolderCard key={folder.id} folder={folder} sites={vaultSites} onPress={() => setOpenedFolder(folder)} />
+            <FolderCard 
+              key={folder.id} 
+              folder={folder} 
+              sites={vaultSites} 
+              onPress={() => setOpenedFolder(folder)} 
+              onLongPress={() => setSelectedFolderActions(folder)} // Opens Folder Options
+            />
           ))}
 
           {filteredVault.map(item => (
@@ -149,10 +142,8 @@ export default function HomeScreen({ navigation }) {
                 <Text className="text-white text-2xl font-bold">{openedFolder?.name}</Text>
                 <Text className="text-slate-500 text-sm">{currentFolderSites.length} items</Text>
               </View>
+              {/* FIXED: Removed Trash Icon entirely from here! */}
               <View className="flex-row">
-                <TouchableOpacity onPress={confirmDeleteFolder} className="bg-red-500/10 p-2 rounded-full mr-3 border border-red-500/30">
-                  <Ionicons name="trash-outline" size={22} color="#ef4444" />
-                </TouchableOpacity>
                 <TouchableOpacity onPress={() => setOpenedFolder(null)} className="bg-slate-800 p-2 rounded-full border border-slate-700">
                   <Ionicons name="close" size={22} color="#94a3b8" />
                 </TouchableOpacity>
@@ -160,7 +151,6 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 12, paddingTop: 24 }}>
-              {/* FIXED MATH: Using exactly columnGap: 3.5% */}
               <View className="flex-row flex-wrap px-4 justify-start" style={{ columnGap: '3.5%' }}>
                 {currentFolderSites.length === 0 ? (
                   <View className="w-full py-20 items-center">
@@ -182,6 +172,58 @@ export default function HomeScreen({ navigation }) {
               </View>
             </ScrollView>
          </View>
+      </Modal>
+
+      {/* --- NEW: FOLDER ACTION MODAL (Long Press) --- */}
+      <Modal animationType="slide" transparent={true} visible={!!selectedFolderActions} onRequestClose={() => setSelectedFolderActions(null)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setSelectedFolderActions(null)} className="flex-1 bg-black/80 justify-end">
+          <View className="bg-slate-900 rounded-t-3xl p-6 border-t border-slate-700 shadow-2xl pb-10">
+            
+            <View className="flex-row items-center mb-6 pb-6 border-b border-slate-700/50">
+              <View className="w-10 h-10 rounded-xl bg-slate-800 justify-center items-center mr-4 border border-slate-700">
+                <Ionicons name="folder" size={20} color="#a855f7" />
+              </View>
+              <Text className="text-white text-xl font-bold">{selectedFolderActions?.name}</Text>
+            </View>
+            
+            <TouchableOpacity 
+              onPress={() => {
+                extractFolder(selectedFolderActions.id);
+                setSelectedFolderActions(null);
+                if (Platform.OS === 'android') ToastAndroid.show('Sites extracted to dashboard', ToastAndroid.SHORT);
+              }} 
+              className="flex-row items-center mb-6 pl-2"
+            >
+              <Ionicons name="push-outline" size={24} color="#38bdf8" />
+              <View className="ml-4">
+                <Text className="text-white text-lg font-bold">Extract Sites</Text>
+                <Text className="text-slate-400 text-xs">Move all contents to the main vault</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => {
+                Alert.alert("Delete Folder", `Are you sure you want to delete ${selectedFolderActions?.name}?`, [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: () => {
+                      deleteFolder(selectedFolderActions.id);
+                      setSelectedFolderActions(null);
+                      if (Platform.OS === 'android') ToastAndroid.show('Folder deleted', ToastAndroid.SHORT);
+                    }
+                  }
+                ]);
+              }} 
+              className="flex-row items-center mb-2 pl-2"
+            >
+              <Ionicons name="trash" size={24} color="#ef4444" />
+              <View className="ml-4">
+                <Text className="text-red-500 text-lg font-bold">Delete Folder</Text>
+                <Text className="text-slate-400 text-xs">Sites inside will also be extracted</Text>
+              </View>
+            </TouchableOpacity>
+
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       <LinearGradient colors={['transparent', 'rgba(168, 85, 247, 0.15)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140, zIndex: 10 }} pointerEvents="none" />

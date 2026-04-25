@@ -21,8 +21,6 @@ export const VaultProvider = ({ children }) => {
   const [discoverCache, setDiscoverCache] = useState(null);
   const [apiKeys, setApiKeys] = useState([]);
   const [exhaustedKeys, setExhaustedKeys] = useState([]);
-  
-  // NEW: State to manage folders
   const [folders, setFolders] = useState([]);
 
   useEffect(() => {
@@ -32,9 +30,8 @@ export const VaultProvider = ({ children }) => {
   const loadData = async () => {
     try {
       const storedSites = await AsyncStorage.getItem('@vault_sites');
-      if (storedSites) {
-        setVaultSites(JSON.parse(storedSites));
-      } else {
+      if (storedSites) setVaultSites(JSON.parse(storedSites));
+      else {
         setVaultSites(DEFAULT_SITES);
         await AsyncStorage.setItem('@vault_sites', JSON.stringify(DEFAULT_SITES));
       }
@@ -51,10 +48,8 @@ export const VaultProvider = ({ children }) => {
       const storedExhausted = await AsyncStorage.getItem('@exhausted_keys');
       if (storedExhausted) setExhaustedKeys(JSON.parse(storedExhausted));
 
-      // NEW: Load folders
       const storedFolders = await AsyncStorage.getItem('@vault_folders');
       if (storedFolders) setFolders(JSON.parse(storedFolders));
-
     } catch (e) {
       console.error("Failed to load data", e);
     }
@@ -67,11 +62,8 @@ export const VaultProvider = ({ children }) => {
 
   const updateDiscoverCache = async (newCache) => {
     setDiscoverCache(newCache);
-    if (newCache) {
-      await AsyncStorage.setItem('@discover_cache', JSON.stringify(newCache));
-    } else {
-      await AsyncStorage.removeItem('@discover_cache');
-    }
+    if (newCache) await AsyncStorage.setItem('@discover_cache', JSON.stringify(newCache));
+    else await AsyncStorage.removeItem('@discover_cache');
   };
 
   const addApiKey = async (key) => {
@@ -104,7 +96,6 @@ export const VaultProvider = ({ children }) => {
   };
 
   const addSite = async (name, url, iconUrl = null) => {
-    // Note: new sites start with folderId: null
     const newSite = { id: Date.now().toString(), name, url, icon: 'planet', iconUrl, color: '#a855f7', isPinned: false, folderId: null };
     const updatedSites = [...vaultSites, newSite];
     setVaultSites(updatedSites);
@@ -112,7 +103,17 @@ export const VaultProvider = ({ children }) => {
   };
 
   const togglePin = async (id) => {
-    const updatedSites = vaultSites.map(site => site.id === id ? { ...site, isPinned: !site.isPinned } : site);
+    const updatedSites = vaultSites.map(site => {
+      if (site.id === id) {
+        const willPin = !site.isPinned;
+        return { 
+          ...site, 
+          isPinned: willPin, 
+          folderId: willPin ? null : site.folderId 
+        };
+      }
+      return site;
+    });
     setVaultSites(updatedSites);
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
   };
@@ -137,7 +138,6 @@ export const VaultProvider = ({ children }) => {
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(finalizedSites));
   };
 
-  // --- FOLDER MANAGEMENT (NEW) ---
   const createFolder = async (name) => {
     const newFolder = { id: 'folder_' + Date.now(), name };
     const updatedFolders = [...folders, newFolder];
@@ -147,19 +147,35 @@ export const VaultProvider = ({ children }) => {
   };
 
   const deleteFolder = async (folderId) => {
-    // Remove the folder
     const updatedFolders = folders.filter(f => f.id !== folderId);
     setFolders(updatedFolders);
     await AsyncStorage.setItem('@vault_folders', JSON.stringify(updatedFolders));
     
-    // Move all sites in that folder back to the main screen
     const updatedSites = vaultSites.map(site => site.folderId === folderId ? { ...site, folderId: null } : site);
     setVaultSites(updatedSites);
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
   };
 
+  const extractFolder = async (folderId) => {
+    const updatedSites = vaultSites.map(site => site.folderId === folderId ? { ...site, folderId: null } : site);
+    setVaultSites(updatedSites);
+    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+  };
+
+  // FIXED: Automatically unpin the site if it gets moved into a folder!
   const moveSiteToFolder = async (siteId, folderId) => {
-    const updatedSites = vaultSites.map(site => site.id === siteId ? { ...site, folderId } : site);
+    const updatedSites = vaultSites.map(site => {
+      if (site.id === siteId) {
+        return { 
+          ...site, 
+          folderId, 
+          // If folderId is not null (meaning it's entering a folder), unpin it!
+          isPinned: folderId !== null ? false : site.isPinned 
+        };
+      }
+      return site;
+    });
+    
     setVaultSites(updatedSites);
     await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
   };
@@ -169,7 +185,7 @@ export const VaultProvider = ({ children }) => {
       vaultSites, addSite, togglePin, deleteSite, editSite, importSites,
       preferences, savePreferences, discoverCache, updateDiscoverCache,
       apiKeys, addApiKey, removeApiKey, exhaustedKeys, markKeyExhausted,
-      folders, createFolder, deleteFolder, moveSiteToFolder // <-- Export folder functions
+      folders, createFolder, deleteFolder, extractFolder, moveSiteToFolder
     }}>
       {children}
     </VaultContext.Provider>
