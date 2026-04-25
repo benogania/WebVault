@@ -65,10 +65,16 @@ export default function AllSitesScreen({ navigation }) {
             {filteredPinned.length > 0 && (
               <>
                 <SectionHeader title="Pinned Sites" />
-                {/* FIXED: Added gap: '5%' and px-4 for perfect 3-column spacing */}
-                <View className="flex-row flex-wrap px-4 mb-4 justify-start" style={{ gap: '5%' }}>
+                {/* FIXED MATH: Using exactly columnGap: 3.5% */}
+                <View className="flex-row flex-wrap px-4 mb-4 justify-start" style={{ columnGap: '3.5%' }}>
                   {filteredPinned.map(item => (
-                    <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
+                    <VaultCard 
+                      key={item.id} 
+                      {...item} 
+                      hidePinIcon={true} // Added hidePinIcon here!
+                      onPress={() => openSite(item.url)} 
+                      onLongPress={() => setSelectedSite(item)} 
+                    />
                   ))}
                 </View>
               </>
@@ -77,10 +83,15 @@ export default function AllSitesScreen({ navigation }) {
             {filteredUnpinned.length > 0 && (
               <>
                 {filteredPinned.length > 0 && <SectionHeader title="Other Sites" />}
-                {/* FIXED: Added gap: '5%' and px-4 for perfect 3-column spacing */}
-                <View className="flex-row flex-wrap px-4 mb-8 justify-start mt-2" style={{ gap: '5%' }}>
+                {/* FIXED MATH: Using exactly columnGap: 3.5% */}
+                <View className="flex-row flex-wrap px-4 mb-8 justify-start mt-2" style={{ columnGap: '3.5%' }}>
                   {filteredUnpinned.map(item => (
-                    <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
+                    <VaultCard 
+                      key={item.id} 
+                      {...item} 
+                      onPress={() => openSite(item.url)} 
+                      onLongPress={() => setSelectedSite(item)} 
+                    />
                   ))}
                 </View>
               </>

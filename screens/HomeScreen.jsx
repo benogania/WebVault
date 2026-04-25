@@ -16,24 +16,26 @@ const FolderCard = ({ folder, sites, onPress }) => {
   const previewSites = folderSites.slice(0, 4); 
 
   return (
-    <TouchableOpacity onPress={onPress} className="w-[30%] items-center mb-6">
+    // FIXED: Using exactly 31% width to match VaultCard
+    <TouchableOpacity onPress={onPress} className="w-[31%] items-center mb-4">
+      {/* Restored rounded-xl shape */}
       <View className="w-full h-28 bg-slate-800 rounded-xl border border-slate-700/60 p-3 justify-between items-center shadow-lg">
         
         <View className="flex-1 w-full justify-center items-center pt-1">
           {previewSites.length > 0 ? (
-            <View className="w-16 h-16 flex-row flex-wrap justify-between content-between">
+            <View className="w-12 h-12 flex-row flex-wrap justify-between content-between">
               {previewSites.map((site) => (
-                <View key={site.id} className="w-[47%] h-[47%] bg-slate-900 rounded-xl overflow-hidden justify-center items-center border border-slate-700/50">
+                <View key={site.id} className="w-[47%] h-[47%] bg-slate-900 rounded-md overflow-hidden justify-center items-center border border-slate-700/50">
                   {site.iconUrl ? (
                     <Image source={{ uri: site.iconUrl }} className="w-full h-full" />
                   ) : (
-                    <Ionicons name={site.icon} size={16} color={site.color} />
+                    <Ionicons name={site.icon} size={12} color={site.color} />
                   )}
                 </View>
               ))}
             </View>
           ) : (
-            <Ionicons name="folder-open" size={36} color="#475569" />
+            <Ionicons name="folder-open" size={28} color="#475569" />
           )}
         </View>
         
@@ -100,9 +102,8 @@ export default function HomeScreen({ navigation }) {
         {filteredPinned.length > 0 && (
           <>
             <SectionHeader title="Pinned" actionText="VIEW ALL" onActionPress={() => navigation.navigate('AllSites')} />
-            <View className="flex-row flex-wrap px-4 mb-4 justify-start" style={{ gap: '5%' }}>
-              
-              {/* FIXED: Removed the .slice limit to show all pinned sites, and passed hidePinIcon */}
+            {/* FIXED MATH: Using exactly columnGap: 3.5% */}
+            <View className="flex-row flex-wrap px-4 mb-2 justify-start" style={{ columnGap: '3.5%' }}>
               {filteredPinned.map(item => (
                 <VaultCard 
                   key={item.id} 
@@ -112,7 +113,6 @@ export default function HomeScreen({ navigation }) {
                   onLongPress={() => setSelectedSite(item)} 
                 />
               ))}
-              
             </View>
           </>
         )}
@@ -120,7 +120,8 @@ export default function HomeScreen({ navigation }) {
         {/* --- FOLDERS & VAULT SECTION --- */}
         <SectionHeader title={searchQuery ? "Search Results" : "Your Vault"} />
         
-        <View className="flex-row flex-wrap px-4 mb-8 justify-start" style={{ gap: '5%' }}>
+        {/* FIXED MATH: Using exactly columnGap: 3.5% */}
+        <View className="flex-row flex-wrap px-4 mb-2 justify-start" style={{ columnGap: '3.5%' }}>
           
           {filteredFolders.map(folder => (
             <FolderCard key={folder.id} folder={folder} sites={vaultSites} onPress={() => setOpenedFolder(folder)} />
@@ -159,7 +160,8 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 12, paddingTop: 24 }}>
-              <View className="flex-row flex-wrap px-4 justify-start" style={{ gap: '5%' }}>
+              {/* FIXED MATH: Using exactly columnGap: 3.5% */}
+              <View className="flex-row flex-wrap px-4 justify-start" style={{ columnGap: '3.5%' }}>
                 {currentFolderSites.length === 0 ? (
                   <View className="w-full py-20 items-center">
                     <Ionicons name="folder-open-outline" size={64} color="#334155" />

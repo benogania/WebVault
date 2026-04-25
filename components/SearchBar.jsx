@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function SearchBar({ value, onChangeText }) {
   return (
-    <View className="flex-row items-center bg-cardBg rounded-xl px-4 py-1.5 mx-4 mb-6 border border-slate-700">
+    <View className="flex-row items-center bg-cardBg rounded-xl px-4 py-1.5 mx-4 mb-6 border border-slate-700 shadow-sm">
       <Ionicons name="search" size={20} color="#94a3b8" />
       <TextInput 
         value={value}
