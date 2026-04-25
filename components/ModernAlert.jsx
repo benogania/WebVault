@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function ModernAlert({ visible, title, message, onClose, type = 'error' }) {
   const isError = type === 'error';
   const iconName = isError ? 'warning-outline' : 'checkmark-circle-outline';
-  const iconColor = isError ? '#ef4444' : '#d946ef'; // Red for error, Pink for success
+  const iconColor = isError ? '#ef4444' : '#d946ef';
   const buttonBg = isError ? 'bg-red-500' : 'bg-accentPink';
 
   return (

@@ -11,36 +11,37 @@ import FloatingButton from '../components/FloatingButton';
 import SiteActionModal from '../components/SiteActionModal';
 import { VaultContext } from '../context/VaultContext';
 
-// --- UPDATED: Folder sizes and border radius matched to Vault Cards ---
 const FolderCard = ({ folder, sites, onPress }) => {
   const folderSites = sites.filter(s => s.folderId === folder.id);
-  const previewSites = folderSites.slice(0, 4); // Get first 4 to build 2x2 grid
+  const previewSites = folderSites.slice(0, 4); 
 
   return (
     <TouchableOpacity onPress={onPress} className="w-[30%] items-center mb-6">
-      {/* CHANGED: w-[86px] h-[86px] rounded-[28px] p-3
-        This creates the perfect modern "Squircle" shape identical to standard vault cards 
-      */}
-      <View className="w-[86px] h-[86px] rounded-[28px] bg-slate-800 border border-slate-700 p-3 justify-center items-center shadow-lg mb-2">
-        {previewSites.length > 0 ? (
-          <View className="flex-row flex-wrap justify-between content-between w-full h-full">
-            {previewSites.map((site) => (
-              <View key={site.id} className="w-[47%] h-[47%]">
-                {site.iconUrl ? (
-                  <Image source={{ uri: site.iconUrl }} className="w-full h-full rounded-md" />
-                ) : (
-                  <View className="w-full h-full bg-slate-700 rounded-md items-center justify-center">
-                    <Ionicons name={site.icon} size={12} color={site.color} />
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <Ionicons name="folder-open" size={32} color="#475569" />
-        )}
+      <View className="w-full h-28 bg-slate-800 rounded-xl border border-slate-700/60 p-3 justify-between items-center shadow-lg">
+        
+        <View className="flex-1 w-full justify-center items-center pt-1">
+          {previewSites.length > 0 ? (
+            <View className="w-16 h-16 flex-row flex-wrap justify-between content-between">
+              {previewSites.map((site) => (
+                <View key={site.id} className="w-[47%] h-[47%] bg-slate-900 rounded-xl overflow-hidden justify-center items-center border border-slate-700/50">
+                  {site.iconUrl ? (
+                    <Image source={{ uri: site.iconUrl }} className="w-full h-full" />
+                  ) : (
+                    <Ionicons name={site.icon} size={16} color={site.color} />
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Ionicons name="folder-open" size={36} color="#475569" />
+          )}
+        </View>
+        
+        <Text className="text-white text-xs font-bold text-center mt-2 w-full" numberOfLines={1}>
+          {folder.name}
+        </Text>
+        
       </View>
-      <Text className="text-slate-300 text-xs font-semibold text-center" numberOfLines={1}>{folder.name}</Text>
     </TouchableOpacity>
   );
 };
@@ -99,24 +100,32 @@ export default function HomeScreen({ navigation }) {
         {filteredPinned.length > 0 && (
           <>
             <SectionHeader title="Pinned" actionText="VIEW ALL" onActionPress={() => navigation.navigate('AllSites')} />
-            <View className="flex-row flex-wrap px-3 mb-4 justify-start">
-              {filteredPinned.slice(0, 6).map(item => (
-                <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
+            <View className="flex-row flex-wrap px-4 mb-4 justify-start" style={{ gap: '5%' }}>
+              
+              {/* FIXED: Removed the .slice limit to show all pinned sites, and passed hidePinIcon */}
+              {filteredPinned.map(item => (
+                <VaultCard 
+                  key={item.id} 
+                  {...item} 
+                  hidePinIcon={true} 
+                  onPress={() => openSite(item.url)} 
+                  onLongPress={() => setSelectedSite(item)} 
+                />
               ))}
+              
             </View>
           </>
         )}
 
         {/* --- FOLDERS & VAULT SECTION --- */}
         <SectionHeader title={searchQuery ? "Search Results" : "Your Vault"} />
-        <View className="flex-row flex-wrap px-3 mb-8 justify-start">
+        
+        <View className="flex-row flex-wrap px-4 mb-8 justify-start" style={{ gap: '5%' }}>
           
-          {/* Render Folders First */}
           {filteredFolders.map(folder => (
             <FolderCard key={folder.id} folder={folder} sites={vaultSites} onPress={() => setOpenedFolder(folder)} />
           ))}
 
-          {/* Render Main Sites */}
           {filteredVault.map(item => (
              <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
           ))}
@@ -150,7 +159,7 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 12, paddingTop: 24 }}>
-              <View className="flex-row flex-wrap justify-start">
+              <View className="flex-row flex-wrap px-4 justify-start" style={{ gap: '5%' }}>
                 {currentFolderSites.length === 0 ? (
                   <View className="w-full py-20 items-center">
                     <Ionicons name="folder-open-outline" size={64} color="#334155" />
@@ -162,7 +171,7 @@ export default function HomeScreen({ navigation }) {
                       key={item.id} {...item} 
                       onPress={() => openSite(item.url)} 
                       onLongPress={() => {
-                        setOpenedFolder(null); // Close folder view to show action modal smoothly
+                        setOpenedFolder(null); 
                         setTimeout(() => setSelectedSite(item), 300);
                       }} 
                     />

@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { View, ScrollView, Text, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser'; // NEW: In-app browser
+import * as WebBrowser from 'expo-web-browser'; 
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
 import SectionHeader from '../components/SectionHeader';
@@ -14,7 +14,6 @@ export default function AllSitesScreen({ navigation }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // UPDATED: Now uses the in-app browser instead of kicking users out to Chrome/Safari
   const openSite = async (url) => {
     try {
       await WebBrowser.openBrowserAsync(url, {
@@ -43,11 +42,7 @@ export default function AllSitesScreen({ navigation }) {
 
   return (
     <View className="flex-1 bg-slate-900">
-      <LinearGradient
-        colors={['rgba(217, 70, 239, 0.15)', 'transparent']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 140, zIndex: 10 }}
-        pointerEvents="none"
-      />
+      <LinearGradient colors={['rgba(217, 70, 239, 0.15)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 140, zIndex: 10 }} pointerEvents="none" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <Header />
@@ -70,7 +65,8 @@ export default function AllSitesScreen({ navigation }) {
             {filteredPinned.length > 0 && (
               <>
                 <SectionHeader title="Pinned Sites" />
-                <View className="flex-row flex-wrap px-3 mb-4 justify-start">
+                {/* FIXED: Added gap: '5%' and px-4 for perfect 3-column spacing */}
+                <View className="flex-row flex-wrap px-4 mb-4 justify-start" style={{ gap: '5%' }}>
                   {filteredPinned.map(item => (
                     <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
                   ))}
@@ -81,7 +77,8 @@ export default function AllSitesScreen({ navigation }) {
             {filteredUnpinned.length > 0 && (
               <>
                 {filteredPinned.length > 0 && <SectionHeader title="Other Sites" />}
-                <View className="flex-row flex-wrap px-3 mb-8 justify-start mt-2">
+                {/* FIXED: Added gap: '5%' and px-4 for perfect 3-column spacing */}
+                <View className="flex-row flex-wrap px-4 mb-8 justify-start mt-2" style={{ gap: '5%' }}>
                   {filteredUnpinned.map(item => (
                     <VaultCard key={item.id} {...item} onPress={() => openSite(item.url)} onLongPress={() => setSelectedSite(item)} />
                   ))}
@@ -92,11 +89,7 @@ export default function AllSitesScreen({ navigation }) {
         )}
       </ScrollView>
 
-      <LinearGradient
-        colors={['transparent', 'rgba(168, 85, 247, 0.15)']}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140, zIndex: 10 }}
-        pointerEvents="none"
-      />
+      <LinearGradient colors={['transparent', 'rgba(168, 85, 247, 0.15)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140, zIndex: 10 }} pointerEvents="none" />
 
       <SiteActionModal 
         visible={!!selectedSite}

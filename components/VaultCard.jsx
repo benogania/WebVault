@@ -1,32 +1,42 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { Ionicons, Entypo, AntDesign } from '@expo/vector-icons'; // Import Entypo
+import { Ionicons, Entypo } from '@expo/vector-icons';
 
-export default function VaultCard({ id, name, icon, iconUrl, color, isPinned, onPress, onLongPress }) {
+export default function VaultCard({ name, icon, iconUrl, color, isPinned, onPress, onLongPress }) {
   return (
+    // FIXED: Enforced exactly 30% width to allow 3 cards per row perfectly
     <TouchableOpacity 
-      onPress={() => onPress(id)}
-      onLongPress={() => onLongPress(id)}
-      className="bg-cardBg rounded-2xl w-[31%] mx-[1%] mb-4 h-28 justify-center items-center relative border border-slate-700/50"
+      onPress={onPress} 
+      onLongPress={onLongPress} 
+      className="w-[30%] items-center mb-6"
     >
-      {isPinned && (
-        <View className="absolute top-2 right-2 z-10">
-          {/* Updated to Entypo 'pin' */}
-          <AntDesign name="pushpin" size={14} color="#d946ef" />
-        </View>
-      )}
-      
-      <View className="w-12 h-12 rounded-xl justify-center items-center mb-3 overflow-hidden" style={{ backgroundColor: `${color}20` }}>
-        {iconUrl ? (
-          <Image source={{ uri: iconUrl }} className="w-8 h-8 rounded-md" />
-        ) : (
-          <Ionicons name={icon} size={24} color={color} />
+      {/* Matches FolderCard: h-28 and rounded-[24px] */}
+      <View className="w-full h-28 bg-slate-800 rounded-xl border border-slate-700/60 p-3 justify-between items-center shadow-lg relative">
+        
+        {/* Pinned Indicator - Tucked neatly in the corner */}
+        {isPinned && (
+          <View className="absolute top-2 right-2 z-10">
+            <Entypo name="pin" size={14} color="#d946ef" />
+          </View>
         )}
+        
+        {/* Inner Icon Container */}
+        <View className="flex-1 w-full justify-center items-center pt-1">
+          <View className="w-10 h-10 bg-slate-900 rounded-2xl overflow-hidden justify-center items-center border border-slate-700/50">
+            {iconUrl ? (
+              <Image source={{ uri: iconUrl }} className="w-full h-full" />
+            ) : (
+              <Ionicons name={icon || 'planet'} size={28} color={color || '#a855f7'} />
+            )}
+          </View>
+        </View>
+        
+        {/* Title */}
+        <Text className="text-white text-xs font-bold text-center mt-2 w-full" numberOfLines={1}>
+          {name}
+        </Text>
+        
       </View>
-      
-      <Text className="text-slate-300 text-xs font-medium truncate w-full px-2 text-center" numberOfLines={1}>
-        {name}
-      </Text>
     </TouchableOpacity>
   );
 }
