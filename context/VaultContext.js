@@ -1,18 +1,22 @@
-import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  downloadOfflinePage,
+  deleteOfflinePage,
+} from "../utils/offlineManager";
 
 export const VaultContext = createContext();
 
 const DEFAULT_SITES = [
-  { id: 'def-1', name: 'GitHub', url: 'https://github.com', icon: 'logo-github', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=github.com', color: '#a855f7', isPinned: true },
-  { id: 'def-2', name: 'Stack Overflow', url: 'https://stackoverflow.com', icon: 'code-slash', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=stackoverflow.com', color: '#a855f7', isPinned: true },
-  { id: 'def-3', name: 'YouTube', url: 'https://youtube.com', icon: 'logo-youtube', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=youtube.com', color: '#a855f7', isPinned: true },
-  { id: 'def-4', name: 'React Native', url: 'https://reactnative.dev', icon: 'planet', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=reactnative.dev', color: '#a855f7', isPinned: false },
-  { id: 'def-5', name: 'Tailwind CSS', url: 'https://tailwindcss.com', icon: 'color-palette', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=tailwindcss.com', color: '#a855f7', isPinned: false },
-  { id: 'def-6', name: 'MongoDB', url: 'https://mongodb.com', icon: 'leaf', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=mongodb.com', color: '#a855f7', isPinned: false },
-  { id: 'def-7', name: 'Dribbble', url: 'https://dribbble.com', icon: 'basketball', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=dribbble.com', color: '#a855f7', isPinned: false },
-  { id: 'def-8', name: 'Dev.to', url: 'https://dev.to', icon: 'terminal', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=dev.to', color: '#a855f7', isPinned: false },
-  { id: 'def-9', name: 'Figma', url: 'https://figma.com', icon: 'layers', iconUrl: 'https://www.google.com/s2/favicons?sz=128&domain=figma.com', color: '#a855f7', isPinned: false },
+  { id: "def-1", name: "GitHub", url: "https://github.com", icon: "logo-github", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=github.com", color: "#a855f7", isPinned: true },
+  { id: "def-2", name: "Stack Overflow", url: "https://stackoverflow.com", icon: "code-slash", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=stackoverflow.com", color: "#a855f7", isPinned: true },
+  { id: "def-3", name: "YouTube", url: "https://youtube.com", icon: "logo-youtube", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=youtube.com", color: "#a855f7", isPinned: true },
+  { id: "def-4", name: "React Native", url: "https://reactnative.dev", icon: "planet", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=reactnative.dev", color: "#a855f7", isPinned: false },
+  { id: "def-5", name: "Tailwind CSS", url: "https://tailwindcss.com", icon: "color-palette", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=tailwindcss.com", color: "#a855f7", isPinned: false },
+  { id: "def-6", name: "MongoDB", url: "https://mongodb.com", icon: "leaf", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=mongodb.com", color: "#a855f7", isPinned: false },
+  { id: "def-7", name: "Dribbble", url: "https://dribbble.com", icon: "basketball", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=dribbble.com", color: "#a855f7", isPinned: false },
+  { id: "def-8", name: "Dev.to", url: "https://dev.to", icon: "terminal", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=dev.to", color: "#a855f7", isPinned: false },
+  { id: "def-9", name: "Figma", url: "https://figma.com", icon: "layers", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=figma.com", color: "#a855f7", isPinned: false },
 ];
 
 export const VaultProvider = ({ children }) => {
@@ -22,6 +26,7 @@ export const VaultProvider = ({ children }) => {
   const [apiKeys, setApiKeys] = useState([]);
   const [exhaustedKeys, setExhaustedKeys] = useState([]);
   const [folders, setFolders] = useState([]);
+  const [offlineSites, setOfflineSites] = useState([]); // Added state
 
   useEffect(() => {
     loadData();
@@ -29,164 +34,229 @@ export const VaultProvider = ({ children }) => {
 
   const loadData = async () => {
     try {
-      const storedSites = await AsyncStorage.getItem('@vault_sites');
+      const storedSites = await AsyncStorage.getItem("@vault_sites");
       if (storedSites) setVaultSites(JSON.parse(storedSites));
       else {
         setVaultSites(DEFAULT_SITES);
-        await AsyncStorage.setItem('@vault_sites', JSON.stringify(DEFAULT_SITES));
+        await AsyncStorage.setItem("@vault_sites", JSON.stringify(DEFAULT_SITES));
       }
 
-      const storedPrefs = await AsyncStorage.getItem('@user_prefs');
+      const storedPrefs = await AsyncStorage.getItem("@user_prefs");
       if (storedPrefs) setPreferences(JSON.parse(storedPrefs));
 
-      const storedCache = await AsyncStorage.getItem('@discover_cache');
+      const storedCache = await AsyncStorage.getItem("@discover_cache");
       if (storedCache) setDiscoverCache(JSON.parse(storedCache));
 
-      const storedKeys = await AsyncStorage.getItem('@api_keys');
+      const storedKeys = await AsyncStorage.getItem("@api_keys");
       if (storedKeys) setApiKeys(JSON.parse(storedKeys));
 
-      const storedExhausted = await AsyncStorage.getItem('@exhausted_keys');
+      const storedExhausted = await AsyncStorage.getItem("@exhausted_keys");
       if (storedExhausted) setExhaustedKeys(JSON.parse(storedExhausted));
 
-      const storedFolders = await AsyncStorage.getItem('@vault_folders');
+      const storedFolders = await AsyncStorage.getItem("@vault_folders");
       if (storedFolders) setFolders(JSON.parse(storedFolders));
+
+      // Loaded offline sites from storage
+      const storedOffline = await AsyncStorage.getItem("@offline_sites");
+      if (storedOffline) setOfflineSites(JSON.parse(storedOffline));
     } catch (e) {
       console.error("Failed to load data", e);
     }
   };
 
+  const downloadManualUrl = async (name, url) => {
+    const id = "off_" + Date.now();
+    const localUri = await downloadOfflinePage(id, url);
+
+    if (localUri) {
+      const newEntry = {
+        id,
+        name,
+        url,
+        localUri,
+        date: new Date().toLocaleDateString(),
+        isDownloaded: true,
+      };
+      const updated = [newEntry, ...offlineSites];
+      setOfflineSites(updated);
+      await AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
+      return true;
+    }
+    return false;
+  };
+
+  const deleteOfflineSite = async (id) => {
+    await deleteOfflinePage(id);
+    const updated = offlineSites.filter((s) => s.id !== id);
+    setOfflineSites(updated);
+    await AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
+  };
+
+  const toggleOfflineDownload = async (site) => {
+    if (site.isDownloaded) {
+      await deleteOfflinePage(site.id);
+      const updatedSites = vaultSites.map((s) =>
+        s.id === site.id ? { ...s, isDownloaded: false, localUri: null } : s,
+      );
+      setVaultSites(updatedSites);
+      await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+      return false;
+    } else {
+      const localUri = await downloadOfflinePage(site.id, site.url);
+      if (localUri) {
+        const updatedSites = vaultSites.map((s) =>
+          s.id === site.id ? { ...s, isDownloaded: true, localUri } : s,
+        );
+        setVaultSites(updatedSites);
+        await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+        return true;
+      }
+      return false;
+    }
+  };
+
   const savePreferences = async (newPrefs) => {
     setPreferences(newPrefs);
-    await AsyncStorage.setItem('@user_prefs', JSON.stringify(newPrefs));
+    await AsyncStorage.setItem("@user_prefs", JSON.stringify(newPrefs));
   };
 
   const updateDiscoverCache = async (newCache) => {
     setDiscoverCache(newCache);
-    if (newCache) await AsyncStorage.setItem('@discover_cache', JSON.stringify(newCache));
-    else await AsyncStorage.removeItem('@discover_cache');
+    if (newCache) await AsyncStorage.setItem("@discover_cache", JSON.stringify(newCache));
+    else await AsyncStorage.removeItem("@discover_cache");
   };
 
   const addApiKey = async (key) => {
     if (!key || apiKeys.includes(key)) return;
     const newKeys = [...apiKeys, key];
     setApiKeys(newKeys);
-    await AsyncStorage.setItem('@api_keys', JSON.stringify(newKeys));
+    await AsyncStorage.setItem("@api_keys", JSON.stringify(newKeys));
     if (exhaustedKeys.includes(key)) {
-      const newExhausted = exhaustedKeys.filter(k => k !== key);
+      const newExhausted = exhaustedKeys.filter((k) => k !== key);
       setExhaustedKeys(newExhausted);
-      await AsyncStorage.setItem('@exhausted_keys', JSON.stringify(newExhausted));
+      await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
     }
   };
 
   const removeApiKey = async (keyToRemove) => {
-    const newKeys = apiKeys.filter(key => key !== keyToRemove);
+    const newKeys = apiKeys.filter((key) => key !== keyToRemove);
     setApiKeys(newKeys);
-    await AsyncStorage.setItem('@api_keys', JSON.stringify(newKeys));
-    const newExhausted = exhaustedKeys.filter(key => key !== keyToRemove);
+    await AsyncStorage.setItem("@api_keys", JSON.stringify(newKeys));
+    const newExhausted = exhaustedKeys.filter((key) => key !== keyToRemove);
     setExhaustedKeys(newExhausted);
-    await AsyncStorage.setItem('@exhausted_keys', JSON.stringify(newExhausted));
+    await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
   };
 
   const markKeyExhausted = async (key) => {
     if (!exhaustedKeys.includes(key)) {
       const newExhausted = [...exhaustedKeys, key];
       setExhaustedKeys(newExhausted);
-      await AsyncStorage.setItem('@exhausted_keys', JSON.stringify(newExhausted));
+      await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
     }
   };
 
   const addSite = async (name, url, iconUrl = null) => {
-    const newSite = { id: Date.now().toString(), name, url, icon: 'planet', iconUrl, color: '#a855f7', isPinned: false, folderId: null };
+    const newSite = { id: Date.now().toString(), name, url, icon: "planet", iconUrl, color: "#a855f7", isPinned: false, folderId: null };
     const updatedSites = [...vaultSites, newSite];
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   const togglePin = async (id) => {
-    const updatedSites = vaultSites.map(site => {
+    const updatedSites = vaultSites.map((site) => {
       if (site.id === id) {
         const willPin = !site.isPinned;
-        return { 
-          ...site, 
-          isPinned: willPin, 
-          folderId: willPin ? null : site.folderId 
-        };
+        return { ...site, isPinned: willPin, folderId: willPin ? null : site.folderId };
       }
       return site;
     });
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   const deleteSite = async (id) => {
-    const updatedSites = vaultSites.filter(site => site.id !== id);
+    const updatedSites = vaultSites.filter((site) => site.id !== id);
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   const editSite = async (id, updatedData) => {
-    const updatedSites = vaultSites.map(site => site.id === id ? { ...site, ...updatedData } : site);
+    const updatedSites = vaultSites.map((site) => site.id === id ? { ...site, ...updatedData } : site);
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   const importSites = async (importedSites) => {
     const combined = [...vaultSites, ...importedSites];
-    const uniqueSites = Array.from(new Map(combined.map(item => [item.url, item])).values());
+    const uniqueSites = Array.from(new Map(combined.map((item) => [item.url, item])).values());
     const finalizedSites = uniqueSites.map((site, index) => ({ ...site, id: site.id || (Date.now() + index).toString(), folderId: site.folderId || null }));
     setVaultSites(finalizedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(finalizedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(finalizedSites));
   };
 
   const createFolder = async (name) => {
-    const newFolder = { id: 'folder_' + Date.now(), name };
+    const newFolder = { id: "folder_" + Date.now(), name };
     const updatedFolders = [...folders, newFolder];
     setFolders(updatedFolders);
-    await AsyncStorage.setItem('@vault_folders', JSON.stringify(updatedFolders));
+    await AsyncStorage.setItem("@vault_folders", JSON.stringify(updatedFolders));
     return newFolder.id;
   };
 
   const deleteFolder = async (folderId) => {
-    const updatedFolders = folders.filter(f => f.id !== folderId);
+    const updatedFolders = folders.filter((f) => f.id !== folderId);
     setFolders(updatedFolders);
-    await AsyncStorage.setItem('@vault_folders', JSON.stringify(updatedFolders));
-    
-    const updatedSites = vaultSites.map(site => site.folderId === folderId ? { ...site, folderId: null } : site);
+    await AsyncStorage.setItem("@vault_folders", JSON.stringify(updatedFolders));
+    const updatedSites = vaultSites.map((site) => site.folderId === folderId ? { ...site, folderId: null } : site);
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   const extractFolder = async (folderId) => {
-    const updatedSites = vaultSites.map(site => site.folderId === folderId ? { ...site, folderId: null } : site);
+    const updatedSites = vaultSites.map((site) => site.folderId === folderId ? { ...site, folderId: null } : site);
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
-  // FIXED: Automatically unpin the site if it gets moved into a folder!
   const moveSiteToFolder = async (siteId, folderId) => {
-    const updatedSites = vaultSites.map(site => {
+    const updatedSites = vaultSites.map((site) => {
       if (site.id === siteId) {
-        return { 
-          ...site, 
-          folderId, 
-          // If folderId is not null (meaning it's entering a folder), unpin it!
-          isPinned: folderId !== null ? false : site.isPinned 
-        };
+        return { ...site, folderId, isPinned: folderId !== null ? false : site.isPinned };
       }
       return site;
     });
-    
     setVaultSites(updatedSites);
-    await AsyncStorage.setItem('@vault_sites', JSON.stringify(updatedSites));
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
   return (
-    <VaultContext.Provider value={{ 
-      vaultSites, addSite, togglePin, deleteSite, editSite, importSites,
-      preferences, savePreferences, discoverCache, updateDiscoverCache,
-      apiKeys, addApiKey, removeApiKey, exhaustedKeys, markKeyExhausted,
-      folders, createFolder, deleteFolder, extractFolder, moveSiteToFolder
-    }}>
+    <VaultContext.Provider
+      value={{
+        vaultSites,
+        addSite,
+        togglePin,
+        deleteSite,
+        editSite,
+        importSites,
+        toggleOfflineDownload,
+        offlineSites,      
+        downloadManualUrl, 
+        deleteOfflineSite, 
+        preferences,
+        savePreferences,
+        discoverCache,
+        updateDiscoverCache,
+        apiKeys,
+        addApiKey,
+        removeApiKey,
+        exhaustedKeys,
+        markKeyExhausted,
+        folders,
+        createFolder,
+        deleteFolder,
+        extractFolder,
+        moveSiteToFolder,
+      }}
+    >
       {children}
     </VaultContext.Provider>
   );
