@@ -1,32 +1,45 @@
 import React, { createContext, useState, useEffect } from "react";
+import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  downloadOfflinePage,
+  initOfflineStorage,
+  createResumable,
   deleteOfflinePage,
+  downloadFullPage,
 } from "../utils/offlineManager";
 
 export const VaultContext = createContext();
 
 const DEFAULT_SITES = [
-  { id: "def-1", name: "GitHub", url: "https://github.com", icon: "logo-github", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=github.com", color: "#a855f7", isPinned: true },
-  { id: "def-2", name: "Stack Overflow", url: "https://stackoverflow.com", icon: "code-slash", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=stackoverflow.com", color: "#a855f7", isPinned: true },
-  { id: "def-3", name: "YouTube", url: "https://youtube.com", icon: "logo-youtube", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=youtube.com", color: "#a855f7", isPinned: true },
-  { id: "def-4", name: "React Native", url: "https://reactnative.dev", icon: "planet", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=reactnative.dev", color: "#a855f7", isPinned: false },
-  { id: "def-5", name: "Tailwind CSS", url: "https://tailwindcss.com", icon: "color-palette", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=tailwindcss.com", color: "#a855f7", isPinned: false },
-  { id: "def-6", name: "MongoDB", url: "https://mongodb.com", icon: "leaf", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=mongodb.com", color: "#a855f7", isPinned: false },
-  { id: "def-7", name: "Dribbble", url: "https://dribbble.com", icon: "basketball", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=dribbble.com", color: "#a855f7", isPinned: false },
-  { id: "def-8", name: "Dev.to", url: "https://dev.to", icon: "terminal", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=dev.to", color: "#a855f7", isPinned: false },
-  { id: "def-9", name: "Figma", url: "https://figma.com", icon: "layers", iconUrl: "https://www.google.com/s2/favicons?sz=128&domain=figma.com", color: "#a855f7", isPinned: false },
+  {
+    id: "def-1",
+    name: "GitHub",
+    url: "https://github.com",
+    icon: "logo-github",
+    color: "#a855f7",
+    isPinned: true,
+  },
+  {
+    id: "def-2",
+    name: "Stack Overflow",
+    url: "https://stackoverflow.com",
+    icon: "code-slash",
+    color: "#a855f7",
+    isPinned: true,
+  },
 ];
 
 export const VaultProvider = ({ children }) => {
+  
   const [vaultSites, setVaultSites] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [offlineSites, setOfflineSites] = useState([]);
+  const [activeDownloads, setActiveDownloads] = useState({}); // Stores resumable objects
+
   const [preferences, setPreferences] = useState([]);
   const [discoverCache, setDiscoverCache] = useState(null);
   const [apiKeys, setApiKeys] = useState([]);
   const [exhaustedKeys, setExhaustedKeys] = useState([]);
-  const [folders, setFolders] = useState([]);
-  const [offlineSites, setOfflineSites] = useState([]); // Added state
 
   useEffect(() => {
     loadData();
@@ -34,55 +47,128 @@ export const VaultProvider = ({ children }) => {
 
   const loadData = async () => {
     try {
-      const storedSites = await AsyncStorage.getItem("@vault_sites");
-      if (storedSites) setVaultSites(JSON.parse(storedSites));
+      const results = await Promise.all([
+        AsyncStorage.getItem("@vault_sites"),
+        AsyncStorage.getItem("@vault_folders"),
+        AsyncStorage.getItem("@offline_sites"),
+        AsyncStorage.getItem("@user_prefs"),
+        AsyncStorage.getItem("@api_keys"),
+        AsyncStorage.getItem("@exhausted_keys"),
+        AsyncStorage.getItem("@discover_cache"),
+      ]);
+
+      const [sites, fldrs, off, prefs, keys, exh, cache] = results;
+
+      if (sites) setVaultSites(JSON.parse(sites));
       else {
         setVaultSites(DEFAULT_SITES);
-        await AsyncStorage.setItem("@vault_sites", JSON.stringify(DEFAULT_SITES));
+        await AsyncStorage.setItem(
+          "@vault_sites",
+          JSON.stringify(DEFAULT_SITES),
+        );
       }
 
-      const storedPrefs = await AsyncStorage.getItem("@user_prefs");
-      if (storedPrefs) setPreferences(JSON.parse(storedPrefs));
-
-      const storedCache = await AsyncStorage.getItem("@discover_cache");
-      if (storedCache) setDiscoverCache(JSON.parse(storedCache));
-
-      const storedKeys = await AsyncStorage.getItem("@api_keys");
-      if (storedKeys) setApiKeys(JSON.parse(storedKeys));
-
-      const storedExhausted = await AsyncStorage.getItem("@exhausted_keys");
-      if (storedExhausted) setExhaustedKeys(JSON.parse(storedExhausted));
-
-      const storedFolders = await AsyncStorage.getItem("@vault_folders");
-      if (storedFolders) setFolders(JSON.parse(storedFolders));
-
-      // Loaded offline sites from storage
-      const storedOffline = await AsyncStorage.getItem("@offline_sites");
-      if (storedOffline) setOfflineSites(JSON.parse(storedOffline));
+      if (fldrs) setFolders(JSON.parse(fldrs));
+      if (off) setOfflineSites(JSON.parse(off));
+      if (prefs) setPreferences(JSON.parse(prefs));
+      if (keys) setApiKeys(JSON.parse(keys));
+      if (exh) setExhaustedKeys(JSON.parse(exh));
+      if (cache) setDiscoverCache(JSON.parse(cache));
     } catch (e) {
       console.error("Failed to load data", e);
     }
   };
 
+  // --- OFFLINE DOWNLOAD ENGINE (Resumable) ---
+
+  const updateOfflineStatus = (id, updates) => {
+    setOfflineSites((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
+      AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const downloadManualUrl = async (name, url) => {
     const id = "off_" + Date.now();
-    const localUri = await downloadOfflinePage(id, url);
 
-    if (localUri) {
-      const newEntry = {
-        id,
-        name,
-        url,
-        localUri,
-        date: new Date().toLocaleDateString(),
-        isDownloaded: true,
-      };
-      const updated = [newEntry, ...offlineSites];
-      setOfflineSites(updated);
-      await AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
-      return true;
+    // 1. Create the object
+    const newEntry = {
+      id,
+      name,
+      url,
+      progress: 0,
+      status: "downloading",
+      date: new Date().toLocaleDateString(),
+    };
+
+    // 2. Update state IMMEDIATELY (using functional update for speed)
+    setOfflineSites((prev) => [newEntry, ...prev]);
+
+    // 3. Kick off the background tasks
+    try {
+      await initOfflineStorage();
+      startDownload(id, url);
+    } catch (e) {
+      console.error("Storage Init Failed", e);
+      updateOfflineStatus(id, { status: "failed" });
     }
-    return false;
+  };
+
+  const startDownload = async (id, url) => {
+    try {
+      // A. Initialize the folder first
+      await initOfflineStorage();
+
+      // B. Get the bundled HTML (with CSS)
+      const bundledHtml = await downloadFullPage(url);
+
+      // C. Save the file
+      const fileUri =
+        FileSystem.documentDirectory + "offline_vault/" + `${id}.html`;
+      await FileSystem.writeAsStringAsync(fileUri, bundledHtml);
+
+     
+      updateOfflineStatus(id, {
+        status: "completed",
+        progress: 1,
+        localUri: fileUri,
+      });
+    } catch (e) {
+      updateOfflineStatus(id, { status: "failed" });
+      console.error("VaultContext Download Error:", e);
+    }
+  };
+
+  const pauseDownload = async (id) => {
+    const download = activeDownloads[id];
+    if (download) {
+      try {
+        await download.pauseAsync();
+        updateOfflineStatus(id, { status: "paused" });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const resumeDownload = async (id) => {
+    const download = activeDownloads[id];
+    if (download) {
+      updateOfflineStatus(id, { status: "downloading" });
+      try {
+        const result = await download.resumeAsync();
+        if (result) {
+          updateOfflineStatus(id, {
+            status: "completed",
+            progress: 1,
+            localUri: result.uri,
+          });
+        }
+      } catch (e) {
+        updateOfflineStatus(id, { status: "failed" });
+      }
+    }
   };
 
   const deleteOfflineSite = async (id) => {
@@ -90,142 +176,113 @@ export const VaultProvider = ({ children }) => {
     const updated = offlineSites.filter((s) => s.id !== id);
     setOfflineSites(updated);
     await AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
+    // Cleanup active download if it exists
+    if (activeDownloads[id]) {
+      const newActive = { ...activeDownloads };
+      delete newActive[id];
+      setActiveDownloads(newActive);
+    }
   };
 
+  // Logic for the long-press download in Main Vault
   const toggleOfflineDownload = async (site) => {
     if (site.isDownloaded) {
       await deleteOfflinePage(site.id);
-      const updatedSites = vaultSites.map((s) =>
+      const updated = vaultSites.map((s) =>
         s.id === site.id ? { ...s, isDownloaded: false, localUri: null } : s,
       );
-      setVaultSites(updatedSites);
-      await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
-      return false;
+      setVaultSites(updated);
+      await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
     } else {
-      const localUri = await downloadOfflinePage(site.id, site.url);
-      if (localUri) {
-        const updatedSites = vaultSites.map((s) =>
-          s.id === site.id ? { ...s, isDownloaded: true, localUri } : s,
+      // For main vault, we use simple download for now or redirect to offline logic
+      const id = site.id;
+      const resumable = createResumable(site.url, id, (progress) => {
+        // Silently update main vault site progress if needed
+      });
+      try {
+        const result = await resumable.downloadAsync();
+        const updated = vaultSites.map((s) =>
+          s.id === id ? { ...s, isDownloaded: true, localUri: result.uri } : s,
         );
-        setVaultSites(updatedSites);
-        await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
-        return true;
+        setVaultSites(updated);
+        await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
       }
-      return false;
     }
   };
 
-  const savePreferences = async (newPrefs) => {
-    setPreferences(newPrefs);
-    await AsyncStorage.setItem("@user_prefs", JSON.stringify(newPrefs));
-  };
-
-  const updateDiscoverCache = async (newCache) => {
-    setDiscoverCache(newCache);
-    if (newCache) await AsyncStorage.setItem("@discover_cache", JSON.stringify(newCache));
-    else await AsyncStorage.removeItem("@discover_cache");
-  };
-
-  const addApiKey = async (key) => {
-    if (!key || apiKeys.includes(key)) return;
-    const newKeys = [...apiKeys, key];
-    setApiKeys(newKeys);
-    await AsyncStorage.setItem("@api_keys", JSON.stringify(newKeys));
-    if (exhaustedKeys.includes(key)) {
-      const newExhausted = exhaustedKeys.filter((k) => k !== key);
-      setExhaustedKeys(newExhausted);
-      await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
-    }
-  };
-
-  const removeApiKey = async (keyToRemove) => {
-    const newKeys = apiKeys.filter((key) => key !== keyToRemove);
-    setApiKeys(newKeys);
-    await AsyncStorage.setItem("@api_keys", JSON.stringify(newKeys));
-    const newExhausted = exhaustedKeys.filter((key) => key !== keyToRemove);
-    setExhaustedKeys(newExhausted);
-    await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
-  };
-
-  const markKeyExhausted = async (key) => {
-    if (!exhaustedKeys.includes(key)) {
-      const newExhausted = [...exhaustedKeys, key];
-      setExhaustedKeys(newExhausted);
-      await AsyncStorage.setItem("@exhausted_keys", JSON.stringify(newExhausted));
-    }
-  };
+  // --- SITE & FOLDER MANAGEMENT ---
 
   const addSite = async (name, url, iconUrl = null) => {
-    const newSite = { id: Date.now().toString(), name, url, icon: "planet", iconUrl, color: "#a855f7", isPinned: false, folderId: null };
-    const updatedSites = [...vaultSites, newSite];
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+    const newSite = {
+      id: Date.now().toString(),
+      name,
+      url,
+      icon: "planet",
+      iconUrl,
+      color: "#a855f7",
+      isPinned: false,
+      folderId: null,
+    };
+    const updated = [...vaultSites, newSite];
+    setVaultSites(updated);
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
   const togglePin = async (id) => {
-    const updatedSites = vaultSites.map((site) => {
-      if (site.id === id) {
-        const willPin = !site.isPinned;
-        return { ...site, isPinned: willPin, folderId: willPin ? null : site.folderId };
-      }
-      return site;
-    });
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+    const updated = vaultSites.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            isPinned: !s.isPinned,
+            folderId: !s.isPinned ? null : s.folderId,
+          }
+        : s,
+    );
+    setVaultSites(updated);
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
   const deleteSite = async (id) => {
-    const updatedSites = vaultSites.filter((site) => site.id !== id);
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+    const updated = vaultSites.filter((s) => s.id !== id);
+    setVaultSites(updated);
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
-  const editSite = async (id, updatedData) => {
-    const updatedSites = vaultSites.map((site) => site.id === id ? { ...site, ...updatedData } : site);
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
-  };
-
-  const importSites = async (importedSites) => {
-    const combined = [...vaultSites, ...importedSites];
-    const uniqueSites = Array.from(new Map(combined.map((item) => [item.url, item])).values());
-    const finalizedSites = uniqueSites.map((site, index) => ({ ...site, id: site.id || (Date.now() + index).toString(), folderId: site.folderId || null }));
-    setVaultSites(finalizedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(finalizedSites));
+  const moveSiteToFolder = async (siteId, folderId) => {
+    const updated = vaultSites.map((s) =>
+      s.id === siteId
+        ? { ...s, folderId, isPinned: folderId !== null ? false : s.isPinned }
+        : s,
+    );
+    setVaultSites(updated);
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
   const createFolder = async (name) => {
     const newFolder = { id: "folder_" + Date.now(), name };
-    const updatedFolders = [...folders, newFolder];
-    setFolders(updatedFolders);
-    await AsyncStorage.setItem("@vault_folders", JSON.stringify(updatedFolders));
+    const updated = [...folders, newFolder];
+    setFolders(updated);
+    await AsyncStorage.setItem("@vault_folders", JSON.stringify(updated));
     return newFolder.id;
   };
 
   const deleteFolder = async (folderId) => {
-    const updatedFolders = folders.filter((f) => f.id !== folderId);
-    setFolders(updatedFolders);
-    await AsyncStorage.setItem("@vault_folders", JSON.stringify(updatedFolders));
-    const updatedSites = vaultSites.map((site) => site.folderId === folderId ? { ...site, folderId: null } : site);
+    setFolders((prev) => prev.filter((f) => f.id !== folderId));
+    const updatedSites = vaultSites.map((s) =>
+      s.folderId === folderId ? { ...s, folderId: null } : s,
+    );
     setVaultSites(updatedSites);
     await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
   };
 
-  const extractFolder = async (folderId) => {
-    const updatedSites = vaultSites.map((site) => site.folderId === folderId ? { ...site, folderId: null } : site);
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
-  };
-
-  const moveSiteToFolder = async (siteId, folderId) => {
-    const updatedSites = vaultSites.map((site) => {
-      if (site.id === siteId) {
-        return { ...site, folderId, isPinned: folderId !== null ? false : site.isPinned };
-      }
-      return site;
-    });
-    setVaultSites(updatedSites);
-    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updatedSites));
+  // --- API & PREFS ---
+  const addApiKey = async (key) => {
+    if (!key || apiKeys.includes(key)) return;
+    const updated = [...apiKeys, key];
+    setApiKeys(updated);
+    await AsyncStorage.setItem("@api_keys", JSON.stringify(updated));
   };
 
   return (
@@ -235,26 +292,23 @@ export const VaultProvider = ({ children }) => {
         addSite,
         togglePin,
         deleteSite,
-        editSite,
-        importSites,
-        toggleOfflineDownload,
-        offlineSites,      
-        downloadManualUrl, 
-        deleteOfflineSite, 
-        preferences,
-        savePreferences,
-        discoverCache,
-        updateDiscoverCache,
-        apiKeys,
-        addApiKey,
-        removeApiKey,
-        exhaustedKeys,
-        markKeyExhausted,
+        moveSiteToFolder,
         folders,
         createFolder,
         deleteFolder,
-        extractFolder,
-        moveSiteToFolder,
+        offlineSites,
+        downloadManualUrl,
+        pauseDownload,
+        resumeDownload,
+        deleteOfflineSite,
+        startDownload,
+        toggleOfflineDownload,
+        preferences,
+        setPreferences,
+        apiKeys,
+        addApiKey,
+        exhaustedKeys,
+        markKeyExhausted: (key) => setExhaustedKeys([...exhaustedKeys, key]),
       }}
     >
       {children}

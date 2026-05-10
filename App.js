@@ -8,6 +8,7 @@ import TabNavigator from './navigation/TabNavigator';
 import AddSiteScreen from './screens/AddSiteScreen';
 import { VaultProvider } from './context/VaultContext';
 import DiscoverScreen from './screens/DiscoverScreen';
+import OfflineViewerScreen from './screens/OfflineViewerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -73,6 +74,7 @@ export default function App() {
           />
           
           <Stack.Screen name="Discover" component={DiscoverScreen} />
+          <Stack.Screen name="OfflineViewerScreen" component={OfflineViewerScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </VaultProvider>
