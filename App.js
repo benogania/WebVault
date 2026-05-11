@@ -9,15 +9,16 @@ import AddSiteScreen from './screens/AddSiteScreen';
 import { VaultProvider } from './context/VaultContext';
 import DiscoverScreen from './screens/DiscoverScreen';
 import OfflineViewerScreen from './screens/OfflineViewerScreen';
+import AllSitesScreen from './screens/AllSitesScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  // NEW: Keep track of whether the app is in the foreground or background
+  
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // We moved the UI logic into a reusable function
+
     const enforceImmersiveMode = async () => {
       if (Platform.OS === 'android') {
         // Hide the bottom navigation bar
@@ -39,8 +40,6 @@ export default function App() {
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        // The user just came back to the app from the browser or another app!
-        // Re-enforce the immersive mode to hide the buttons again.
         enforceImmersiveMode();
       }
       appState.current = nextAppState;
@@ -75,6 +74,8 @@ export default function App() {
           
           <Stack.Screen name="Discover" component={DiscoverScreen} />
           <Stack.Screen name="OfflineViewerScreen" component={OfflineViewerScreen} />
+          <Stack.Screen name="AllSites" component={AllSitesScreen} />
+          
         </Stack.Navigator>
       </NavigationContainer>
     </VaultProvider>

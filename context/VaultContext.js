@@ -184,6 +184,14 @@ export const VaultProvider = ({ children }) => {
     }
   };
 
+  const editOfflineSite = async (id, newName) => {
+    setOfflineSites((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, name: newName } : s));
+      AsyncStorage.setItem("@offline_sites", JSON.stringify(updated));
+      return updated;
+    });
+  };
+  
   // Logic for the long-press download in Main Vault
   const toggleOfflineDownload = async (site) => {
     if (site.isDownloaded) {
@@ -250,6 +258,7 @@ export const VaultProvider = ({ children }) => {
     await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
+
   const moveSiteToFolder = async (siteId, folderId) => {
     const updated = vaultSites.map((s) =>
       s.id === siteId
@@ -301,6 +310,7 @@ export const VaultProvider = ({ children }) => {
         pauseDownload,
         resumeDownload,
         deleteOfflineSite,
+        editOfflineSite,
         startDownload,
         toggleOfflineDownload,
         preferences,

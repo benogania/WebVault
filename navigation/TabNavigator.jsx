@@ -30,24 +30,18 @@ export default function TabNavigator() {
             iconName = focused ? "home" : "home-outline";
           else if (route.name === "Discover")
             iconName = focused ? "sparkles" : "sparkles-outline";
-          // Changed route name and icon to 'grid'
-          else if (route.name === "AllSites")
-            iconName = focused ? "grid" : "grid-outline";
+          else if (route.name === "Offline Pages")
+            iconName = focused ? "document" : "document-outline";
           else if (route.name === "Settings")
             iconName = focused ? "settings" : "settings-outline";
+
           return <Ionicons name={iconName} size={24} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Discover" component={DiscoverScreen} />
-      {/* Updated the screen reference and added a custom label */}
-      <Tab.Screen name="OfflineViewer" component={OfflineScreen} />
-      <Tab.Screen
-        name="AllSites"
-        component={AllSitesScreen}
-        options={{ tabBarLabel: "All Sites" }}
-      />
+      <Tab.Screen name="Offline Pages" component={OfflineScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
