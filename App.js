@@ -10,6 +10,7 @@ import { VaultProvider } from './context/VaultContext';
 import DiscoverScreen from './screens/DiscoverScreen';
 import OfflineViewerScreen from './screens/OfflineViewerScreen';
 import AllSitesScreen from './screens/AllSitesScreen';
+import WebViewerScreen from './screens/WebViewerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -75,6 +76,7 @@ export default function App() {
           <Stack.Screen name="Discover" component={DiscoverScreen} />
           <Stack.Screen name="OfflineViewerScreen" component={OfflineViewerScreen} />
           <Stack.Screen name="AllSites" component={AllSitesScreen} />
+          <Stack.Screen name="WebViewerScreen" component={WebViewerScreen} />
           
         </Stack.Navigator>
       </NavigationContainer>
