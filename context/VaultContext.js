@@ -238,6 +238,14 @@ export const VaultProvider = ({ children }) => {
     await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
   };
 
+  const editSite = async (id, updatedData) => {
+    const updated = vaultSites.map((site) =>
+      site.id === id ? { ...site, ...updatedData } : site
+    );
+    setVaultSites(updated);
+    await AsyncStorage.setItem("@vault_sites", JSON.stringify(updated));
+  };
+
   const togglePin = async (id) => {
     const updated = vaultSites.map((s) =>
       s.id === id
@@ -301,6 +309,7 @@ export const VaultProvider = ({ children }) => {
         addSite,
         togglePin,
         deleteSite,
+        editSite,
         moveSiteToFolder,
         folders,
         createFolder,
